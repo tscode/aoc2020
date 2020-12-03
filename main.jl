@@ -56,3 +56,38 @@ function solve04()
   end
   println("Answer: $(length(valid)) of $(length(lines)) passwords are valid")
 end
+
+
+# Day 3
+
+forest(file) = mapreduce(vcat, readlines(file)) do line
+  map(isequal('#'), collect(line))'
+end
+
+straight_path(size, (dx, dy)) = map(0:div(size[1]-1, dy)) do i
+  CartesianIndex(1 + i*dy, 1 + (i*dx % size[2]))
+end
+
+function solve05(file)
+  landscape = forest(file) 
+  indices = straight_path(size(landscape), (3, 1))
+  sum(landscape[indices])
+end
+
+@assert solve05("day03-test.txt") == 7
+@assert solve05("day03.txt") == 148
+
+function solve06(file)
+  landscape = forest(file)
+  slopes = [(1,1), (3,1), (5,1), (7,1), (1,2)]
+  trees = map(slopes) do slope
+    indices = straight_path(size(landscape), slope)
+    sum(landscape[indices])
+  end
+  prod(trees)
+end
+
+@assert solve06("day03-test.txt") == 336
+@assert solve06("day03.txt") == 727923200
+
+
