@@ -60,7 +60,7 @@ end
 
 # Day 3
 
-forest(file) = mapreduce(vcat, readlines(file)) do line
+parse_forest(file) = mapreduce(vcat, readlines(file)) do line
   map(isequal('#'), collect(line))'
 end
 
@@ -69,7 +69,7 @@ straight_path(size, (dx, dy)) = map(0:div(size[1]-1, dy)) do i
 end
 
 function solve05(file)
-  landscape = forest(file) 
+  landscape = parse_forest(file) 
   indices = straight_path(size(landscape), (3, 1))
   sum(landscape[indices])
 end
@@ -78,7 +78,7 @@ end
 @assert solve05("day03.txt") == 148
 
 function solve06(file)
-  landscape = forest(file)
+  landscape = parse_forest(file)
   slopes = [(1,1), (3,1), (5,1), (7,1), (1,2)]
   trees = map(slopes) do slope
     indices = straight_path(size(landscape), slope)
@@ -90,4 +90,59 @@ end
 @assert solve06("day03-test.txt") == 336
 @assert solve06("day03.txt") == 727923200
 
+
+# Day 4
+
+function parse_passports(file)
+  map(split(read(file, String), r"\n\n+", keepempty=false)) do str
+    pairs = map(eachmatch(r"([a-z]+):([a-zA-Z0-9#]+)", str)) do m
+      m.captures[1] => m.captures[2]
+    end
+    Dict(pairs)
+  end
+end
+
+function check_keys(passport)
+  valid     = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid", "cid"] |> Set
+  mandatory = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"] |> Set
+  fields    = keys(passport) |> Set
+  issubset(mandatory, fields) && issubset(fields, valid)
+end
+
+function check_values(passport)
+
+  function valid_height(val)
+    m = match(r"([0-9]+)(in|cm)", val)
+    if     isnothing(m) false
+    elseif m.captures[2] == "cm" 150 <= parse(Int, m.captures[1]) <= 193
+    else   59 <= parse(Int, m.captures[1]) <= 76
+    end
+  end
+
+  tests = [
+    ("hgt", val -> valid_height(val)),
+    ("byr", val -> occursin(r"^[0-9]{4}$", val) && 1920 <= parse(Int, val) <= 2002),
+    ("iyr", val -> occursin(r"^[0-9]{4}$", val) && 2010 <= parse(Int, val) <= 2020),
+    ("eyr", val -> occursin(r"^[0-9]{4}$", val) && 2020 <= parse(Int, val) <= 2030),
+    ("hcl", val -> occursin(r"^#[0-9a-f]{6}$", val)),
+    ("ecl", val -> occursin(r"amb|blu|brn|gry|grn|hzl|oth", val)),
+    ("pid", val -> occursin(r"^[0-9]{9}$", val)) ]
+
+  all(t -> t[2](passport[t[1]]), tests)
+end
+
+function solve07(file)
+  passports = parse_passports(file)
+  count(check_keys, passports)
+end
+
+@assert solve07("day04-test.txt") == 2
+@assert solve07("day04.txt") == 260
+
+function solve08(file)
+  passports = parse_passports(file)
+  count(p -> check_keys(p) && check_values(p), passports)
+end
+
+@assert solve08("day04.txt") == 153
 
