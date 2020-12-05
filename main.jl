@@ -146,3 +146,43 @@ end
 
 @assert solve08("day04.txt") == 153
 
+# Day 5
+
+
+function parse_boarding_pass(str)
+  lookup(str, dict) = parse(Int, map(c -> dict[c], str), base = 2)
+  m = match(r"^((?:F|B){7})((?:R|L){3})", str)
+  row = lookup(m.captures[1], Dict('F'=>'0', 'B'=>'1'))
+  col = lookup(m.captures[2], Dict('L'=>'0', 'R'=>'1'))
+  (row, col)
+end
+
+@assert parse_boarding_pass("BFFFBBFRRR") == (70, 7)
+@assert parse_boarding_pass("FFFBBBFRRR") == (14, 7)
+@assert parse_boarding_pass("BBFFBBFRLL") == (102, 4)
+
+function solve09(file)
+  mapreduce(max, readlines(file), init=0) do str
+    pass = parse_boarding_pass(str)
+    pass[1] * 8 + pass[2]
+  end
+end
+
+@assert solve09("day05.txt") == 813
+
+function solve10(file)
+  ids = map(readlines(file)) do str
+    pass = parse_boarding_pass(str)
+    pass[1] * 8 + pass[2]
+  end
+  min_id = 8
+  max_id = div(maximum(ids), 8) * 8 - 1
+  sids = ids[(ids .>= min_id) .& (ids .<= max_id)] |> sort
+  idx = findfirst(x -> x > 1, sids[2:end] - sids[1:end-1]) # +-1 exists
+  id = sids[idx] + 1
+  @assert !(id in ids)
+  id
+end
+
+@assert solve10("day05.txt") == 612
+
