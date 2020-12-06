@@ -191,7 +191,10 @@ end
 
 function parse_questionairs(file)
   map(split(read(file, String), r"\n\n+", keepempty=false)) do str
-    map(x -> Set(collect(x)), split(str, "\n", keepempty=false))
+    # Do not have to use Set(collect(x)) here, since intersect and union
+    # also works as intended for normal arrays, and performance stays
+    # the same
+    map(x -> collect(x), split(str, "\n", keepempty=false))
   end
 end
 
@@ -210,3 +213,4 @@ end
 
 @assert solve12("day06-test.txt") == 6
 @assert solve12("day06.txt") == 3585
+
