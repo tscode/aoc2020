@@ -186,3 +186,27 @@ end
 
 @assert solve10("day05.txt") == 612
 
+
+# Day 6
+
+function parse_questionairs(file)
+  map(split(read(file, String), r"\n\n+", keepempty=false)) do str
+    map(x -> Set(collect(x)), split(str, "\n", keepempty=false))
+  end
+end
+
+function solve11(file)
+  data = map(q -> union(q...), parse_questionairs(file))
+  sum(length, data)
+end
+
+@assert solve11("day06-test.txt") == 11
+@assert solve11("day06.txt") == 6930
+
+function solve12(file)
+  data = map(q -> intersect(q...), parse_questionairs(file))
+  sum(length, data)
+end
+
+@assert solve12("day06-test.txt") == 6
+@assert solve12("day06.txt") == 3585
