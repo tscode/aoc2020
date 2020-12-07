@@ -1,61 +1,64 @@
 
+@time begin
+
 # Day 1
 
-function solve01()
-  values = parse.(Int, readlines("day01.txt"))
+function solve01(file)
+  values = parse.(Int, readlines(file))
   for x in values, y in values
     if x + y == 2020 && x <= y
-      println("$x * $y = $(x*y)")
+      return x * y
     end
   end
 end
 
-function solve02()
-  values = parse.(Int, readlines("day01.txt"))
+@assert solve01("data/day01-test.txt") == 514579
+@assert solve01("data/day01.txt") == 1007104
+
+function solve02(file)
+  values = parse.(Int, readlines(file))
   for x in values, y in values, z in values
     if x + y + z == 2020 && x <= y <= z
-      println("$x * $y * $z = $(x*y*z)")
+      return x * y * z
     end
   end
 end
+
+@assert solve02("data/day01-test.txt") == 241861950
+@assert solve02("data/day01.txt") == 18847752
+
 
 # Day 2
 
-function solve03()
-  println("Solve task 1 of day 2")
-  lines = readlines("day02.txt")
+function solve03(file)
+  lines = readlines(file)
   pat = r"^([0-9]+)-([0-9]+) ([a-z]): ([a-z]+)$"
-  valid = filter(lines) do line
+  count(lines) do line
     m = match(pat, line)
-    if isnothing(m)
-      println("Error: did not understand entry '$line'")
-      return false
-    end
     min, max = parse.(Int, m.captures[1:2])
     letter = m.captures[3][1]
     pwd = m.captures[4]
     min <= count(isequal(letter), pwd) <= max
   end
-  println("Answer: $(length(valid)) of $(length(lines)) passwords are valid")
 end
 
-function solve04()
-  println("Solve task 2 of day 2")
-  lines = readlines("day02.txt")
+@assert solve03("data/day02-test.txt") == 2
+@assert solve03("data/day02.txt") == 580
+
+function solve04(file)
+  lines = readlines(file)
   pat = r"^([0-9]+)-([0-9]+) ([a-z]): ([a-z]+)$"
-  valid = filter(lines) do line
+  count(lines) do line
     m = match(pat, line)
-    if isnothing(m)
-      println("Error: did not understand entry '$line'")
-      return false
-    end
     min, max = parse.(Int, m.captures[1:2])
     letter = m.captures[3][1]
     pwd = m.captures[4]
     count(isequal(letter),  pwd[[min, max]]) == 1
   end
-  println("Answer: $(length(valid)) of $(length(lines)) passwords are valid")
 end
+
+@assert solve04("data/day02-test.txt") == 1
+@assert solve04("data/day02.txt") == 611
 
 
 # Day 3
@@ -74,8 +77,8 @@ function solve05(file)
   sum(landscape[indices])
 end
 
-@assert solve05("day03-test.txt") == 7
-@assert solve05("day03.txt") == 148
+@assert solve05("data/day03-test.txt") == 7
+@assert solve05("data/day03.txt") == 148
 
 function solve06(file)
   landscape = parse_forest(file)
@@ -87,8 +90,8 @@ function solve06(file)
   prod(trees)
 end
 
-@assert solve06("day03-test.txt") == 336
-@assert solve06("day03.txt") == 727923200
+@assert solve06("data/day03-test.txt") == 336
+@assert solve06("data/day03.txt") == 727923200
 
 
 # Day 4
@@ -136,18 +139,18 @@ function solve07(file)
   count(check_keys, passports)
 end
 
-@assert solve07("day04-test.txt") == 2
-@assert solve07("day04.txt") == 260
+@assert solve07("data/day04-test.txt") == 2
+@assert solve07("data/day04.txt") == 260
 
 function solve08(file)
   passports = parse_passports(file)
   count(p -> check_keys(p) && check_values(p), passports)
 end
 
-@assert solve08("day04.txt") == 153
+@assert solve08("data/day04.txt") == 153
+
 
 # Day 5
-
 
 function parse_boarding_pass(str)
   lookup(str, dict) = parse(Int, map(c -> dict[c], str), base = 2)
@@ -168,7 +171,7 @@ function solve09(file)
   end
 end
 
-@assert solve09("day05.txt") == 813
+@assert solve09("data/day05.txt") == 813
 
 function solve10(file)
   ids = map(readlines(file)) do str
@@ -184,7 +187,7 @@ function solve10(file)
   id
 end
 
-@assert solve10("day05.txt") == 612
+@assert solve10("data/day05.txt") == 612
 
 
 # Day 6
@@ -203,16 +206,16 @@ function solve11(file)
   sum(length, data)
 end
 
-@assert solve11("day06-test.txt") == 11
-@assert solve11("day06.txt") == 6930
+@assert solve11("data/day06-test.txt") == 11
+@assert solve11("data/day06.txt") == 6930
 
 function solve12(file)
   data = map(q -> intersect(q...), parse_questionairs(file))
   sum(length, data)
 end
 
-@assert solve12("day06-test.txt") == 6
-@assert solve12("day06.txt") == 3585
+@assert solve12("data/day06-test.txt") == 6
+@assert solve12("data/day06.txt") == 3585
 
 
 # Day 7
@@ -239,18 +242,20 @@ function reverse_bagsicon(bc)
   Dict(pairs)
 end
 
-function nparent_bags(rbc, color)
+function parent_bags(rbc, color)
   parents = rbc[color]
-  union(parents, map(x -> parent_bags(rbc, x), parents)...) |> length
+  union(parents, map(x -> parent_bags(rbc, x), parents)...)
 end
+
+nparent_bags(rbc, color) = parent_bags(rbc, color) |> length
 
 function solve13(file)
   rbc = parse_bagsicon(file) |> reverse_bagsicon
   nparent_bags(rbc, "shiny gold")
 end
 
-@assert solve13("day07-test.txt") == 4
-@assert solve13("day07.txt") == 254
+@assert solve13("data/day07-test.txt") == 4
+@assert solve13("data/day07.txt") == 254
 
 function nchild_bags(bc, color)
   cs = bc[color]
@@ -262,7 +267,8 @@ function solve14(file)
   nchild_bags(bc, "shiny gold")
 end
 
-@assert solve14("day07-test.txt") == 32
-@assert solve14("day07-test2.txt") == 126
-@assert solve14("day07.txt") == 6006
+@assert solve14("data/day07-test.txt") == 32
+@assert solve14("data/day07-test2.txt") == 126
+@assert solve14("data/day07.txt") == 6006
 
+end # @time
