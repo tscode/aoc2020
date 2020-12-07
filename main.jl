@@ -214,3 +214,55 @@ end
 @assert solve12("day06-test.txt") == 6
 @assert solve12("day06.txt") == 3585
 
+
+# Day 7
+
+function parse_bagsicon(file)
+  pairs = map(readlines(file)) do line
+    parent, rest = split(line,  " bags contain ")
+    children = map(split(rest, ",")) do child
+      m = match(r"([0-9]+) ([a-z]+ [a-z]+)", child)
+      if !isnothing(m) parse(Int, m.captures[1]), m.captures[2] end
+    end
+    parent => filter(!isnothing, children)
+  end
+  Dict(pairs)
+end
+
+function reverse_bagsicon(bc)
+  contains = (bag, child) -> any(x -> x[2] == child, bc[bag])
+  bags = collect(keys(bc))
+  pairs = map(bags) do child
+    parents = filter(bag -> contains(bag, child), bags)
+    child => parents
+  end
+  Dict(pairs)
+end
+
+function nparent_bags(rbc, color)
+  parents = rbc[color]
+  union(parents, map(x -> parent_bags(rbc, x), parents)...) |> length
+end
+
+function solve13(file)
+  rbc = parse_bagsicon(file) |> reverse_bagsicon
+  nparent_bags(rbc, "shiny gold")
+end
+
+@assert solve13("day07-test.txt") == 4
+@assert solve13("day07.txt") == 254
+
+function nchild_bags(bc, color)
+  cs = bc[color]
+  isempty(cs) ? 0 : sum(c -> c[1] + c[1] * nchild_bags(bc, c[2]), cs)
+end
+
+function solve14(file)
+  bc = parse_bagsicon(file)
+  nchild_bags(bc, "shiny gold")
+end
+
+@assert solve14("day07-test.txt") == 32
+@assert solve14("day07-test2.txt") == 126
+@assert solve14("day07.txt") == 6006
+
