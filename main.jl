@@ -271,4 +271,64 @@ end
 @assert solve14("data/day07-test2.txt") == 126
 @assert solve14("data/day07.txt") == 6006
 
+
+# Day 8
+
+function parse_boot_code(file)
+  map(readlines(file)) do line
+    op, arg = split(line, " ")
+    (op, parse(Int, arg))
+  end
+end
+
+const boot_instructions =
+  [ "acc" => (i, acc, arg) -> (i+1, acc + arg)
+  , "jmp" => (i, acc, arg) -> (i+arg, acc)
+  , "nop" => (i, acc, arg) -> (i+1, acc)
+  ] |> Dict
+
+function run_boot_code(bc)
+  len = length(bc)
+  visited = zeros(Bool, len)
+  i, acc = (1, 0)
+  while true
+    if     i == len + 1 return acc, 0 # exit code: without error
+    elseif i >= len + 2 return acc, 1 # exit code: missed instruction
+    elseif visited[i]   return acc, 2 # exit code: infinite loop
+    end
+    visited[i] = true
+    op, arg = bc[i]
+    i, acc = boot_instructions[op](i, acc, arg)
+  end
+end
+
+function solve15(file)
+  bc = parse_boot_code(file)
+  acc, exit_code = run_boot_code(bc)
+  acc
+end
+
+@assert solve15("data/day08-test.txt") == 5
+@assert solve15("data/day08.txt") == 1727
+
+function repair_boot_code!(bc, i)
+  op, arg = bc[i]
+  if     op == "jmp" bc[i] = ("nop", arg); bc
+  elseif op == "nop" bc[i] = ("jmp", arg); bc
+  end
+end
+
+function solve16(file)
+  bc_faulty = parse_boot_code(file)
+  for i in 1:length(bc_faulty)
+    bc = repair_boot_code!(bc_faulty |> copy, i)
+    isnothing(bc) && continue
+    acc, exit_code = run_boot_code(bc)
+    exit_code == 0 && return acc
+  end
+end
+
+@assert solve16("data/day08-test.txt") == 8
+@assert solve16("data/day08.txt") == 552
+
 end # @time
