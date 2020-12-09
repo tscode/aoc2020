@@ -334,6 +334,8 @@ end
 
 # Day 9
 
+findmap(f, col) = col[findfirst(x -> !isnothing(f(x)), col)] |> f
+
 function check_sum(base, s)
   visited = Set{Int}()
   for x in base
@@ -344,12 +346,8 @@ end
 
 parse_XMAS(file) = parse.(Int, readlines(file))
 
-function attack_XMAS(code, n)
-  idx = findfirst(n+1:length(code)) do i
-    base = code[i-n:i-1] 
-    !check_sum(base, code[i])
-  end
-  code[idx+n]
+attack_XMAS(code, n) = findmap(n+1:length(code)) do i
+  check_sum(code[i-n:i-1], code[i]) ? nothing : code[i]
 end
 
 function solve17(file, n = 25)
@@ -360,27 +358,24 @@ end
 @assert solve17("data/day09-test.txt", 5) == 127
 @assert solve17("data/day09.txt") == 22406676
 
-function find_contiguous_sum(xmas, idx, target)
+function find_csum_indices(xmas, idx, target)
   i, s = idx, 0
   while s < target
     s += xmas[i]
     i += 1
   end
-  s == target ? (idx, i-1) : nothing
+  s == target ? (idx:i-1) : nothing
 end
 
-function find_XMAS_weakness(xmas, target)
-   weakness = findfirst(1:length(xmas)) do idx
-     find_contiguous_sum(xmas, idx, target) |> !isnothing
-   end
-   a, b = find_contiguous_sum(xmas, weakness, target)
-   minimum(xmas[a:b]) + maximum(xmas[a:b])
+function weakness_XMAS(xmas, target)
+  range = findmap(i -> find_csum_indices(xmas, i, target), 1:length(xmas))
+  minimum(xmas[range]) + maximum(xmas[range])
 end
 
 function solve18(file, n = 25)
   xmas   = parse_XMAS(file)
   target = attack_XMAS(xmas, n)
-  find_XMAS_weakness(xmas, target)
+  weakness_XMAS(xmas, target)
 end
 
 @assert solve18("data/day09-test.txt", 5) == 62
