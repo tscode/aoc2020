@@ -331,4 +331,59 @@ end
 @assert solve16("data/day08-test.txt") == 8
 @assert solve16("data/day08.txt") == 552
 
+
+# Day 9
+
+function check_sum(base, s)
+  visited = Set{Int}()
+  for x in base
+    s - x in visited ? (return true) : push!(visited, x)
+  end
+  false
+end
+
+parse_XMAS(file) = parse.(Int, readlines(file))
+
+function attack_XMAS(code, n)
+  idx = findfirst(n+1:length(code)) do i
+    base = code[i-n:i-1] 
+    !check_sum(base, code[i])
+  end
+  code[idx+n]
+end
+
+function solve17(file, n = 25)
+  xmas = parse_XMAS(file)
+  attack_XMAS(xmas, n)
+end
+
+@assert solve17("data/day09-test.txt", 5) == 127
+@assert solve17("data/day09.txt") == 22406676
+
+function find_contiguous_sum(xmas, idx, target)
+  i, s = idx, 0
+  while s < target
+    s += xmas[i]
+    i += 1
+  end
+  s == target ? (idx, i-1) : nothing
+end
+
+function find_XMAS_weakness(xmas, target)
+   weakness = findfirst(1:length(xmas)) do idx
+     find_contiguous_sum(xmas, idx, target) |> !isnothing
+   end
+   a, b = find_contiguous_sum(xmas, weakness, target)
+   minimum(xmas[a:b]) + maximum(xmas[a:b])
+end
+
+function solve18(file, n = 25)
+  xmas   = parse_XMAS(file)
+  target = attack_XMAS(xmas, n)
+  find_XMAS_weakness(xmas, target)
+end
+
+@assert solve18("data/day09-test.txt", 5) == 62
+@assert solve18("data/day09.txt") == 2942387
+
 end # @time
