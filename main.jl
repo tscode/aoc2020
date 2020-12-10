@@ -381,4 +381,52 @@ end
 @assert solve18("data/day09-test.txt", 5) == 62
 @assert solve18("data/day09.txt") == 2942387
 
+
+# Day 9
+
+parse_adapters(file) = parse.(Int, readlines(file)) |> sort
+
+function solve19(file)
+  adapters = parse_adapters(file)
+  diffs = [adapters; adapters[end] + 3] - [0; adapters]
+  count(isequal(1), diffs) * count(isequal(3), diffs)
+end
+
+@assert solve19("data/day10-test.txt") == 7 * 5
+@assert solve19("data/day10-test2.txt") == 22 * 10
+@assert solve19("data/day10.txt") == 2210
+
+# Search for sublists separated by jolt-jumps of 3
+# Only need to consider sublists of length at least 3, otherwise there
+# is only one configuration (if-clause in the comprehension).
+function split_adapters(adapters)
+  diffs = [adapters; adapters[end] + 3] - [0; adapters]
+  ks    = [0; findall(isequal(3), diffs)]
+  vals  = [0; adapters]
+  idx   = 1:length(ks)-1
+  [ vals[(ks[i]+1):ks[i+1]] for i in idx if ks[i]+2 < ks[i+1] ]
+end
+
+# Checked that each sublist after splitting has at most length 5, so one can
+# easily count the sub-arrangements by brute force
+
+function count_arrangements(sublist)
+  k = length(sublist) - 2
+  masks = map( 1:2^k ) do n # all boolean masks of length k
+    parse.(Bool, bitstring(n-1)[end-k+1:end] |> collect)
+  end
+  valid(arr) = all(x -> x <= 3, arr[2:end] - arr[1:end-1])
+  count(m -> valid(sublist[[true; m; true]]), masks)
+end
+
+function solve20(file)
+  adapters = parse_adapters(file)
+  sublists = split_adapters(adapters)
+  prod(count_arrangements, sublists)
+end
+
+@assert solve20("data/day10-test.txt") == 8
+@assert solve20("data/day10-test2.txt") == 19208
+@assert solve20("data/day10.txt") == 7086739046912
+
 end # @time
