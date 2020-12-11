@@ -429,4 +429,77 @@ end
 @assert solve20("data/day10-test2.txt") == 19208
 @assert solve20("data/day10.txt") == 7086739046912
 
+
+# Day 11
+
+function parse_seat_config(file)
+  dict = Dict('#' => 1, 'L' => 2, '.' => 3)
+  mapreduce(vcat, readlines(file)) do line
+    map(x -> dict[x], collect(line))'
+  end
+end
+
+function analyze_seat(sc, (i, j))
+  n, m = size(sc)
+  sx, sy = max(i-1, 1):min(i+1, n), max(j-1, 1):min(j+1, m)
+  nbh = sc[sx,sy]
+  count(isequal(1), nbh) - isequal(sc[i,j])(1)
+end
+
+function evolve_seat_config(sc, analyze, tol)
+  map(CartesianIndices(sc)) do idx
+    occ = analyze(sc, Tuple(idx))
+    if     sc[idx] == 1 (occ >= tol) ? 2 : 1  # seat was occupied
+    elseif sc[idx] == 2 (occ == 0)   ? 1 : 2  # seat was empty
+    elseif sc[idx] == 3 3                     # floor
+    end
+  end
+end
+
+function find_fixpoint(sc, analyze, tol)
+  sc_before = zeros(Int, size(sc))
+  while !all(sc .== sc_before)
+    sc_before = sc
+    sc = evolve_seat_config(sc, analyze, tol)
+  end
+  sc
+end
+
+function solve21(file)
+  sc = parse_seat_config(file)
+  sc_fix = find_fixpoint(sc, analyze_seat, 4)
+  count(isequal(1), sc_fix)
+end
+
+@assert solve21("data/day11-test.txt") == 37
+@assert solve21("data/day11.txt") == 2481
+
+ray(size, (dx, dy)) = map(0:div(size[1]-1, dy)) do i
+  CartesianIndex(1 + i*dy, 1 + (i*dx % size[2]))
+end
+
+function occupied_along_ray(sc, pos, dir)
+  pos = pos .+ dir
+  while all((1,1) .<= pos .<= size(sc))
+    isequal(sc[pos...], 1) && return true
+    isequal(sc[pos...], 2) && return false
+    pos = pos .+ dir
+  end
+  false
+end
+
+function analyze_seat_ray(sc, pos)
+  dirs = [(i,j) for i in -1:1, j in -1:1 if (i,j) != (0,0)]
+  sum(dir -> occupied_along_ray(sc, pos, dir), dirs)
+end
+
+function solve22(file)
+  sc = parse_seat_config(file)
+  sc_fix = find_fixpoint(sc, analyze_seat_ray, 5)
+  count(isequal(1), sc_fix)
+end
+
+@assert solve22("data/day11-test.txt") == 26
+@assert solve22("data/day11.txt") == 2227
+
 end # @time
