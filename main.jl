@@ -1,6 +1,4 @@
 
-@time begin
-
 # Day 1
 
 function solve01(file)
@@ -281,16 +279,18 @@ function parse_boot_code(file)
   end
 end
 
-const boot_instructions =
-  [ "acc" => (i, acc, arg) -> (i+1, acc + arg)
-  , "jmp" => (i, acc, arg) -> (i+arg, acc)
-  , "nop" => (i, acc, arg) -> (i+1, acc)
-  ] |> Dict
-
 function run_boot_code(bc)
+
+  boot_instructions =
+    [ "acc" => (i, acc, arg) -> (i+1, acc + arg)
+    , "jmp" => (i, acc, arg) -> (i+arg, acc)
+    , "nop" => (i, acc, arg) -> (i+1, acc)
+    ] |> Dict
+
   len = length(bc)
   visited = zeros(Bool, len)
   i, acc = (1, 0)
+
   while true
     if     i == len + 1 return acc, 0 # exit code: without error
     elseif i >= len + 2 return acc, 1 # exit code: missed instruction
@@ -567,4 +567,23 @@ end
 @assert solve24("data/day12-test.txt") == 286
 @assert solve24("data/day12.txt") == 28885
 
-end # @time
+
+# Benchmark
+
+using Printf
+
+function benchmark(nmax)
+  total = sum(1:nmax) do n
+    path  = @sprintf("data/day%02d.txt", n)
+    task1 = @sprintf("solve%02d", 2n-1) |> Symbol
+    task2 = @sprintf("solve%02d", 2n)   |> Symbol
+    time1 = @elapsed Expr(:call, task1, path) |> eval
+    time2 = @elapsed Expr(:call, task2, path) |> eval
+    @printf "day %02d: %.4f | %.4f\n" n time1 time2
+    time1 + time2
+  end
+  @printf "----\ntotal: %.4f" total
+end
+
+
+
