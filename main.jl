@@ -502,4 +502,69 @@ end
 @assert solve22("data/day11-test.txt") == 26
 @assert solve22("data/day11.txt") == 2227
 
+
+# Day 12
+
+parse_navi_actions(file) = map(readlines(file)) do line
+  line[1], parse(Int, line[2:end])
+end
+
+function discrete_rot(n, d)
+  c = round.(Int, cos(n * pi / 180))
+  s = round.(Int, sin(n * pi / 180))
+  (c * d[1] - s * d[2], c * d[2] + s * d[1])
+end
+
+function apply_navi_actions(actions, state)
+
+  update_state = Dict(
+      'N' => (n, x, d) -> (x .+ (0,  n), d)
+    , 'S' => (n, x, d) -> (x .+ (0, -n), d)
+    , 'E' => (n, x, d) -> (x .+ (n,  0), d)
+    , 'W' => (n, x, d) -> (x .+ (-n, 0), d)
+    , 'L' => (n, x, d) -> (x, discrete_rot(n, d))
+    , 'R' => (n, x, d) -> (x, discrete_rot(.-n, d))
+    , 'F' => (n, x, d) -> (x .+ n .* d, d))
+
+  foldl(actions, init=state) do state, action
+    update_state[action[1]](action[2], state...)
+  end
+
+end
+
+function solve23(file)
+  actions = parse_navi_actions(file)
+  pos, dir = apply_navi_actions(actions, ((0,0), (1, 0)))
+  sum(abs, pos)
+end
+
+@assert solve23("data/day12-test.txt") == 25
+@assert solve23("data/day12.txt") == 882
+
+function apply_navi_actions_waypoint(actions, state)
+
+  update_state = Dict(
+      'N' => (n, x, y) -> (x, y .+ (0,  n))
+    , 'S' => (n, x, y) -> (x, y .+ (0, -n))
+    , 'E' => (n, x, y) -> (x, y .+ (n,  0))
+    , 'W' => (n, x, y) -> (x, y .+ (-n, 0))
+    , 'L' => (n, x, y) -> (x, discrete_rot(n, y))
+    , 'R' => (n, x, y) -> (x, discrete_rot(.-n, y))
+    , 'F' => (n, x, y) -> ((x .+ n .* y, y)) )
+
+  foldl(actions, init=state) do state, action
+    update_state[action[1]](action[2], state...)
+  end
+
+end
+
+function solve24(file)
+  actions = parse_navi_actions(file)
+  pos, dir = apply_navi_actions_waypoint(actions, ((0,0), (10, 1)))
+  sum(abs, pos)
+end
+
+@assert solve24("data/day12-test.txt") == 286
+@assert solve24("data/day12.txt") == 28885
+
 end # @time
