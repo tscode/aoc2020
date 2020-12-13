@@ -568,6 +568,56 @@ end
 @assert solve24("data/day12.txt") == 28885
 
 
+# Day 13
+
+function parse_schedule(file)
+  lines = readlines(file)
+  bus_ids = parse.(Int, split(lines[2], r"x?,x?", keepempty=false))
+  parse(Int, lines[1]), bus_ids
+end
+
+
+function solve25(file)
+  time, ids = parse_schedule(file)
+  val, i = findmin(ids .- ((time - 1) .% ids) .- 1)
+  ids[i] * val
+end
+
+@assert solve25("data/day13-test.txt") == 295
+@assert solve25("data/day13.txt") == 333
+
+
+function parse_schedule_contest(file)
+  n, a = Int[], Int[]
+  for (i, v) in split(readlines(file)[2], ",") |> enumerate
+    if !isequal(v, "x")
+      push!(n, parse(Int, v))
+      push!(a, -(i-1))
+    end
+  end
+  n, a
+end
+
+# Smallest positive solution x to system 
+#   x = a_i + x_i * n_i 
+# given n_i > 1 coprime and a_i integers.
+function solve_chinese_remainder(n, a)
+  m = prod(n)
+  s = mapreduce(+, n, a) do ni, ai
+    ai * div(m, ni) * invmod(div(m, ni), ni)
+  end
+  (s % m) + (s < 0) * m
+end
+
+function solve26(file)
+  n, a = parse_schedule_contest(file)
+  solve_chinese_remainder(n, a)
+end
+
+@assert solve26("data/day13-test.txt") == 1068781
+@assert solve26("data/day13.txt") == 690123192779524
+
+
 # Benchmark
 
 using Printf
