@@ -410,11 +410,13 @@ end
 # Checked that each sublist after splitting has at most length 5, so one can
 # easily count the sub-arrangements by brute force
 
+boolean_masks(k) = map( 1:2^k ) do n # all boolean masks of length k
+  parse.(Bool, bitstring(n-1)[end-k+1:end] |> collect)
+end
+
 function count_arrangements(sublist)
   k = length(sublist) - 2
-  masks = map( 1:2^k ) do n # all boolean masks of length k
-    parse.(Bool, bitstring(n-1)[end-k+1:end] |> collect)
-  end
+  masks = boolean_masks(k)
   valid(arr) = all(x -> x <= 3, arr[2:end] - arr[1:end-1])
   count(m -> valid(sublist[[true; m; true]]), masks)
 end
@@ -618,6 +620,77 @@ end
 @assert solve26("data/day13.txt") == 690123192779524
 
 
+# Day 14
+
+tobits(u :: Int) = digits(u, base = 2, pad = 36)
+ofbits(a :: Vector{Int64}) = sum(i -> a[i] * 2^(i-1), 1:length(a))
+
+function parse_docking_program(file)
+  mdict = Dict('X' => -1, '1' => 1, '0' => 0)
+  parse_mask(str) = Int[mdict[s] for s in collect(str)] |> reverse
+  map(readlines(file)) do line
+    m = match(r"^mask = ([X|1|0]+)$", line)
+    if !isnothing(m)
+      :mask, parse_mask(m.captures[1])
+    else
+      m = match(r"^mem\[([0-9]+)\] = ([0-9]+)$", line)
+      :mem, parse.(Int, m.captures)
+    end
+  end
+end
+
+function execute_docking_program_v1(dp)
+  mbit(a, m) = isequal(m, -1) ? a : m
+  init = Dict(), nothing
+  foldl(dp; init) do (mem, mask), (op, v)
+    op == :mask && (mask = v)
+    op == :mem  && (mem[v[1]] = mbit.(v[2] |> tobits, mask) |> ofbits)
+    (mem, mask)
+  end |> first
+end
+
+function solve27(file)
+  dp = parse_docking_program(file)
+  mem = execute_docking_program_v1(dp)
+  sum(values(mem))
+end
+
+@assert solve27("data/day14-test.txt") == 165
+@assert solve27("data/day14.txt") == 13727901897109
+
+function decode_memory_addresses(val, mask)
+  decode_bit(v, m) = isequal(m, 0) ? v : m
+  dval = decode_bit.(tobits(val), mask)
+  floating = findall(isequal(-1), dval)
+  map(boolean_masks(length(floating))) do bmask
+    dval = copy(dval)
+    dval[floating] .= bmask
+    ofbits(dval)
+  end
+end
+
+function execute_docking_program_v2(dp)
+  init = Dict(), nothing
+  foldl(dp; init) do (mem, mask), (op, v)
+    if op == :mask
+      mask = v
+    else
+      indices = decode_memory_addresses(v[1], mask)
+      for i in indices mem[i] = v[2] end
+    end
+    mem, mask
+  end |> first
+end
+
+function solve28(file)
+  dp = parse_docking_program(file)
+  mem = execute_docking_program_v2(dp)
+  sum(values(mem))
+end
+
+@assert solve28("data/day14-test2.txt") == 208
+@assert solve28("data/day14.txt") == 5579916171823
+
 # Benchmark
 
 using Printf
@@ -634,6 +707,5 @@ function benchmark(nmax)
   end
   @printf "----\ntotal: %.4f" total
 end
-
 
 
