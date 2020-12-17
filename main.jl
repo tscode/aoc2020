@@ -691,12 +691,128 @@ end
 @assert solve28("data/day14-test2.txt") == 208
 @assert solve28("data/day14.txt") == 5579916171823
 
+
+# Day 15
+
+function memory_game(start, n)
+  k = length(start)
+  spoken = Dict{Int, Int}(s => i for (i,s) in enumerate(start[1:end-1]))
+  prev = start[end]
+  for i in (k+1):n
+    age = haskey(spoken, prev) ? (i-1) - spoken[prev] : 0
+    spoken[prev] = (i-1)
+    prev = age
+  end
+  prev
+end
+
+solve29(input) = memory_game(input, 2020)
+
+@assert solve29([0, 3, 6]) == 436
+@assert solve29([1, 3, 2]) == 1
+@assert solve29([2, 1, 3]) == 10
+@assert solve29([1, 2, 3]) == 27
+@assert solve29([2, 3, 1]) == 78
+@assert solve29([3, 2, 1]) == 438
+@assert solve29([3, 1, 2]) == 1836
+
+@assert solve29([13,0,10,12,1,5,8]) == 260
+
+solve30(input) = memory_game(input, 30000000)
+
+# This takes too long...
+#@assert solve30([0, 3, 6]) == 175594
+#@assert solve30([13, 0, 10, 12, 1, 5, 8]) == 950
+
+
+# Day 16
+
+function parse_ticket_input(file)
+  reg = r"^([ a-z]+): ([0-9]+)-([0-9]+) or ([0-9]+)-([0-9]+)$"
+  rstr, tstr, nstr = split(read(file, String), "\n\n")
+  rules = map(split(rstr, "\n")) do rule
+    m = match(reg, rule)
+    a, b, c, d = parse.(Int, m.captures[2:end])
+    string(m.captures[1]) => ((a, b), (c, d))
+  end
+  ticket = parse.(Int, split(split(tstr, "\n")[2], ","))
+  nearby = map(split(nstr, "\n", keepempty=false)[2:end]) do t
+    parse.(Int, split(t, ",")) 
+  end
+  (rules = Dict(rules), ticket = ticket, nearby = nearby)
+end
+
+function valid_field_set(rules)
+  regions = map(values(rules)) do r
+    union(collect(r[1][1]:r[1][2]), collect(r[2][1]:r[2][2]))
+  end
+  union(regions...)
+end
+
+function scanning_error_rate(rules, tickets)
+  set = valid_field_set(rules)
+  sum(tickets) do ticket
+    sum(t -> !(t in set) * t,  ticket)
+  end
+end
+
+function solve31(file)
+  ti = parse_ticket_input(file)
+  scanning_error_rate(ti.rules, ti.nearby)
+end
+
+@assert solve31("data/day16-test.txt") == 71
+@assert solve31("data/day16.txt") == 21081
+
+function filter_rules(rules, tickets)
+  set = valid_field_set(rules)
+  filter(tickets) do ticket
+    all(t -> t in set, ticket)
+  end
+end
+
+function index_options(rule, tickets)
+  matches(t, (r1, r2)) = (r1[1] <= t <= r1[2] || r2[1] <= t <= r2[2])
+  findall(1:length(tickets[1])) do i
+    all(t -> matches(t[i], rule), tickets)
+  end
+end
+
+function possible_indices(rules, tickets)
+  classes = Dict{String, Vector{Int}}()
+  for (name, rule) in rules
+    classes[name] = index_options(rule, tickets)
+  end
+  classes
+end
+
+function resolve_indices(indices)
+  given = Set{Int}()
+  map(1:20) do len
+    name = findfirst(val -> length(val) == len, indices)
+    idx = setdiff(indices[name], given)
+    @assert length(idx) == 1
+    push!(given, idx[1])
+    name => idx[1]
+  end |> Dict
+end
+
+function solve32(file)
+  ti = parse_ticket_input(file)
+  tickets = [filter_rules(ti.rules, ti.nearby); [ti.ticket]]
+  indices = possible_indices(ti.rules, tickets) |> resolve_indices
+  prod(ti.ticket[v] for (k,v) in indices if occursin("departure", k))
+end
+
+@assert solve32("data/day16.txt") == 314360510573
+
 # Benchmark
 
 using Printf
 
 function benchmark(nmax)
   total = sum(1:nmax) do n
+    n == 15 && (return 0.)  # On day 15, we used no file input
     path  = @sprintf("data/day%02d.txt", n)
     task1 = @sprintf("solve%02d", 2n-1) |> Symbol
     task2 = @sprintf("solve%02d", 2n)   |> Symbol
