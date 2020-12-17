@@ -743,8 +743,8 @@ function parse_ticket_input(file)
 end
 
 function valid_field_set(rules)
-  regions = map(values(rules)) do r
-    union(collect(r[1][1]:r[1][2]), collect(r[2][1]:r[2][2]))
+  regions = map(values(rules)) do (r1, r2)
+    Set([collect(r1[1]:r1[2]); collect(r2[1]:r2[2])])
   end
   union(regions...)
 end
@@ -806,6 +806,65 @@ end
 
 @assert solve32("data/day16.txt") == 314360510573
 
+
+# Day 17
+
+function parse_conway_cubes(file, extra_dims = (1,))
+  lookup = Dict('#' => true, '.' => false)
+  cubes = mapreduce(vcat, readlines(file)) do line
+    map(c -> lookup[c], collect(line))'
+  end
+  reshape(cubes, size(cubes)..., extra_dims...)
+end
+
+function inflate_conway_space(cubes)
+  space = zeros(Bool, (size(cubes) .+ 2))
+  low = ntuple(_ -> 2, length(size(cubes))) |> CartesianIndex
+  upp = size(cubes) .+ 1                    |> CartesianIndex
+  space[low:upp] .= cubes
+  space
+end
+
+decrease_index(i) = (i-1) > 0 ? (i-1) : 1
+increase_index(i, m) = (i+1) > m ? m : (i+1)
+
+function apply_conway_rule(state, active)
+  if state
+    2 <= active <= 3 ? true : false
+  else
+    active == 3 ? true : false
+  end
+end
+
+function evolve_conway_cubes(cubes)
+  cubes = inflate_conway_space(cubes)
+  map(CartesianIndices(cubes)) do idx
+    low = decrease_index.(Tuple(idx))              |> CartesianIndex
+    upp = increase_index.(Tuple(idx), size(cubes)) |> CartesianIndex
+    active = sum(cubes[low:upp]) - cubes[idx]
+    apply_conway_rule(cubes[idx], active) 
+  end
+end
+
+function solve33(file)
+  cubes = parse_conway_cubes(file) # 3d
+  for i in 1:6 cubes = evolve_conway_cubes(cubes) end
+  sum(cubes)
+end
+
+@assert solve33("data/day17-test.txt") == 112
+@assert solve33("data/day17.txt") == 291
+
+function solve34(file)
+  cubes = parse_conway_cubes(file, (1,1)) # 4d
+  for i in 1:6 cubes = evolve_conway_cubes(cubes) end
+  sum(cubes)
+end
+
+@assert solve34("data/day17-test.txt") == 848
+@assert solve34("data/day17.txt") == 1524
+
+
 # Benchmark
 
 using Printf
@@ -823,5 +882,4 @@ function benchmark(nmax)
   end
   @printf "----\ntotal: %.4f" total
 end
-
 
