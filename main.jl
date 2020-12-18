@@ -864,6 +864,36 @@ end
 @assert solve34("data/day17-test.txt") == 848
 @assert solve34("data/day17.txt") == 1524
 
+# Day 18
+
+# Writing a parser in julia is no fun.
+# However, julia has a parser that supports all demanded features :)
+# Let's use meta-programming to hack the challenge!
+
+function replace_operation!(ex :: Expr, pair :: Pair{Symbol, Symbol})
+  for (i, arg) in enumerate(ex.args)
+    if     arg == pair[1] ex.args[i] = pair[2]
+    elseif arg isa Expr   replace_operation!(arg, pair)
+    end
+  end
+  ex
+end
+
+function eval_term(str, aux = :/)
+  ex = Meta.parse(replace(str, "+" => string(aux))) # hack the precedence ...
+  eval(replace_operation!(ex, aux => :+)) # ... and restore the meaning after parsing :)
+end
+
+solve35(file) = sum(eval_term, readlines(file))
+
+@assert solve35("data/day18-test.txt") == (26 + 437 + 12240 + 13632)
+@assert solve35("data/day18.txt") == 45283905029161
+
+solve36(file) = sum(l -> eval_term(l, :^), readlines(file))
+
+@assert solve36("data/day18-test.txt") == (46 + 1445 + 669060 + 23340)
+@assert solve36("data/day18.txt") == 216975281211165
+
 
 # Benchmark
 
