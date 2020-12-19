@@ -895,6 +895,64 @@ solve36(file) = sum(l -> eval_term(l, :^), readlines(file))
 @assert solve36("data/day18.txt") == 216975281211165
 
 
+# Day 19
+
+function parse_message_input(file)
+  rules, msgs = split(read(file, String), "\n\n")
+  rules = map(split(rules, "\n")) do line
+    id, rule = split(line, ": ")
+    parse(Int, id) => map(split(rule, "|")) do subrule
+      ms = eachmatch(r"[0-9]+", subrule)
+      if isempty(ms)
+        match(r"a|b", subrule).match[1]
+      else
+        map(m -> parse(Int, m.match), ms)
+      end
+    end
+  end
+  Dict(rules), split(msgs, "\n")
+end
+
+
+function consume(rules, n, input)
+  rule = rules[n]
+  if isempty(input)
+    []
+  elseif rule[1] isa Char # Assuming here that no rule is "a" | "b"
+    rule[1] == input[1] ? [input[2:end]] : []
+  else
+    # Collecting all possible residues if rule consumes input
+    mapreduce(vcat, rule) do subrule # | is 'or', so we can combine residues
+      reduce(subrule, init=[input]) do residues, r
+        isempty(residues) && return []
+        mapreduce(res -> consume(rules, r, res), vcat, residues)
+      end
+    end |> unique
+  end
+end
+
+function solve37(file)
+  rules, msgs = parse_message_input(file)
+  sum("" in consume(rules, 0, msg) for msg in msgs)
+end
+
+@assert solve37("data/day19-test.txt") == 2
+@assert solve37("data/day19.txt") == 216
+
+function fix_rules!(rules)
+  rules[8]  = [[42], [42, 8]]
+  rules[11] = [[42, 31], [42, 11, 31]]
+end
+
+function solve38(file)
+  rules, msgs = parse_message_input(file)
+  fix_rules!(rules)
+  sum("" in consume(rules, 0, msg) for msg in msgs)
+end
+
+@assert solve38("data/day19-test2.txt") == 12
+@assert solve38("data/day19.txt") == 400
+
 # Benchmark
 
 using Printf
