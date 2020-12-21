@@ -1122,6 +1122,68 @@ end
 @assert solve40("data/day20-test.txt") == 273
 @assert solve40("data/day20.txt") == 1841
 
+# Day 21
+
+function parse_recipes(file)
+  map(readlines(file)) do line
+    ig, al = match(r"^([a-z ]+) \(contains ([a-z ,]+)\)$", line).captures
+    String.(split(ig, " ")), String.(split(al, ", "))
+  end
+end
+
+function allergene_dict(recipes)
+  amap = map(recipes) do r
+    Dict(a => Set(r[1]) for a in r[2])
+  end
+  merge(intersect, amap...)
+end
+
+all_ingredients(recipes) = union(map(r -> Set(first(r)), recipes)...)
+
+function solve41(file)
+  recipes = parse_recipes(file)
+  ing = union(values(allergene_dict(recipes))...)
+  sum(setdiff(all_ingredients(recipes), ing)) do ingredient
+    count(r -> ingredient in r[1], recipes)
+  end
+end
+
+@assert solve41("data/day21-test.txt") == 5
+@assert solve41("data/day21.txt") == 2262
+
+function reverse_allergene_dict(allergenes)
+  ings = union(values(allergenes)...)
+  map(collect(ings)) do ing
+    ing => filter(a -> ing in allergenes[a], keys(allergenes))
+  end |> Dict
+end
+
+function resolve_ingredients_step!(resolved, allergenes)
+  rev = reverse_allergene_dict(allergenes)
+  for (a, ing) in allergenes
+    if length(ing) == 1 && !(a in resolved)
+      i = first(ing)
+      for al in rev[i]
+        a != al && setdiff!(allergenes[al], ing)
+      end
+      push!(resolved, ing)
+    end
+  end
+end
+
+function solve42(file)
+  recipes = parse_recipes(file)
+  allergenes = allergene_dict(recipes)
+  resolved = Set()
+  while length(resolved) < length(allergenes)
+    resolve_ingredients_step!(resolved, allergenes)
+  end
+  ings = map(x -> first(x[2]), sort(collect(allergenes), by = first))
+  join(ings, ",")
+end
+
+@assert solve42("data/day21-test.txt") == "mxmxvkd,sqjhc,fvjkl"
+@assert solve42("data/day21.txt") == "cxsvdm,glf,rsbxb,xbnmzr,txdmlzd,vlblq,mtnh,mptbpz"
 
 # Benchmark
 
