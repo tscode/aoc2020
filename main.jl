@@ -953,6 +953,176 @@ end
 @assert solve38("data/day19-test2.txt") == 12
 @assert solve38("data/day19.txt") == 400
 
+
+# Day 20
+
+const l1_directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+function parse_images(file)
+  dict = Dict('#' => true, '.' => false)
+  tiles = map(split(read(file, String), "\n\n")) do str
+    lines = split(str, "\n", keepempty=false)
+    id = parse(Int, match(r"[0-9]+", lines[1]).match)
+    id => mapreduce(vcat, lines[2:end]) do row
+      map(c -> dict[c], collect(row))'
+    end
+  end |> Dict
+end
+
+function image_edge(img, dir)
+  if     dir == (0,  1) i, j = 1:size(img, 1), size(img, 2)
+  elseif dir == (0, -1) i, j = 1:size(img, 1), 1
+  elseif dir == (1,  0) i, j = size(img, 1), 1:size(img, 2)
+  else                  i, j = 1, 1:size(img, 2)
+  end
+  img[i,j]
+end
+
+edge_hashes(img) = map(l1_directions) do dir
+  hash(image_edge(img, dir))
+end
+
+function orbit_dihedral8(img)
+  hflip(img) = reverse(img, dims = 1)
+  vflip(img) = reverse(img, dims = 2)
+  trans(img) = transpose(img) |> collect
+  [ img                              # a b; c d
+  , img |> vflip                     # b a; d c
+  , img |> hflip                     # c d; a b
+  , img |> hflip |> vflip            # d c; b a
+  , img |> trans                     # a c; b d
+  , img |> trans |> hflip            # b d; a c
+  , img |> trans |> vflip            # c a; d b
+  , img |> trans |> vflip |> hflip ] # d b; c a
+end
+
+orbit_hashed(image) = map(orbit_dihedral8(image)) do img
+  img, edge_hashes(img)
+end
+
+function match_edges_hash((img, hash), orbit)
+  for (i, dir) in enumerate(l1_directions)
+    idx = findfirst(orbit) do (c, h)
+      hit = (hash[i] == h[(i+1) % 4 + 1]) # depends on the ordering in l1_directions...
+      # short-circuiting causes a considerable performance boost
+      hit && all(image_edge(img, dir) .== image_edge(c, .- dir))
+    end
+    !isnothing(idx) && return (dir, orbit[idx][1])
+  end
+end
+
+function reassamble_step!(imgs, orbits, grid)
+  # use a set for fast lookup of images that are already placed in the grid
+  placed = Set(grid) 
+  # try to glue not-yet-placed images to already-placed images
+  for pos in CartesianIndices(grid)
+    # if there is no image at the position yet, we can continue
+    id = grid[pos]
+    id <= 0 && continue
+    for (cid, candidate) in imgs
+      # if the image cid is already placed, continue
+      cid in placed && continue 
+      # check for matching edges in an (unplaced) candidate image
+      r = match_edges_hash(orbits[id][1], orbits[cid])
+      # in case of a match, update everything
+      if !isnothing(r)
+        cpos = CartesianIndex(Tuple(pos) .+ r[1])
+        grid[cpos] = cid
+        imgs[cid] = r[2] 
+        orbits[cid] = orbit_hashed(r[2])
+        push!(placed, cid)
+      end
+    end
+  end
+end
+
+function reassamble_image!(imgs)
+  # select an initial image
+  id = first(keys(imgs))
+  # place this image at the center of a (sufficiently large) grid
+  l = length(imgs)
+  grid = zeros(Int, 2l + 1, 2l + 1)
+  grid[l + 1, l + 1] = id
+  # cache rotated images as well as hashes for the edges
+  orbits = Dict(id => orbit_hashed(img) for (id, img) in imgs)
+  # iterate over all placed images and try to place new images next to them.
+  # After some steps, we should find a fixpoint in this iteration.
+  while sum(grid .> 0) < length(imgs)
+    reassamble_step!(imgs, orbits, grid)
+  end
+  # shrink the grid to occupied positions only
+  i, j = (sum(grid, dims = d) .> 0 for d in (2, 1))
+  grid[dropdims(i, dims = 2), dropdims(j, dims = 1)]
+end
+
+function solve39(file)
+  imgs = parse_images(file)
+  grid = reassamble_image!(imgs)
+  grid[1,1] * grid[1,end] * grid[end, 1] * grid[end, end]
+end
+
+
+@assert solve39("data/day20-test.txt") == 20899048083289
+@assert solve39("data/day20.txt") == 8425574315321
+
+
+function sea_monster()
+  Bool[ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0
+      ; 1 0 0 0 0 1 1 0 0 0 0 1 1 0 0 0 0 1 1 1
+      ; 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 1 0 0 0 ] 
+end
+
+function construct_image(imgs, grid)
+  s = size(first(imgs)[2]) .- 2
+  image = zeros(Bool, size(grid) .* s)
+  for i in 1:size(grid, 1), j in 1:size(grid, 2)
+    irange = ((i-1)*s[1]+1):(i*s[1])
+    jrange = ((j-1)*s[2]+1):(j*s[2])
+    image[irange, jrange] .= imgs[grid[i,j]][2:end-1, 2:end-1]
+  end
+  image
+end
+
+function detect_monsters(image, monster)
+  match_pixel(i, m) = !m ? true : i
+  si = size(image)
+  sm = size(monster)
+  coords = []
+  for i = 1:(si[1] - sm[1] + 1), j = 1:(si[2] - sm[2] + 1)
+    if all(match_pixel.(image[i:i+sm[1]-1, j:j+sm[2]-1], monster))
+      push!(coords, (i, j))
+    end
+  end
+  coords
+end
+
+function sea_monster_correction(habitat, monster)
+  count(CartesianIndices(habitat)) do idx
+    monster[idx] && habitat[idx] 
+  end
+end
+
+function solve40(file)
+  imgs = parse_images(file)
+  grid = reassamble_image!(imgs)
+  image = construct_image(imgs, grid)
+  monster = sea_monster()
+  for img in orbit_dihedral8(image)
+    coords = detect_monsters(img, monster)
+    if !isempty(coords)
+      nmonster = sum(coords) do (i, j)
+        habitat = img[i:i+size(monster, 1)-1, j:j+size(monster, 2)-1]
+        sea_monster_correction(habitat, monster)
+      end
+      return sum(image) - nmonster
+    end
+  end
+end
+
+@assert solve40("data/day20-test.txt") == 273
+@assert solve40("data/day20.txt") == 1841
+
+
 # Benchmark
 
 using Printf
