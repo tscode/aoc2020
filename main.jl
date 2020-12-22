@@ -1185,6 +1185,72 @@ end
 @assert solve42("data/day21-test.txt") == "mxmxvkd,sqjhc,fvjkl"
 @assert solve42("data/day21.txt") == "cxsvdm,glf,rsbxb,xbnmzr,txdmlzd,vlblq,mtnh,mptbpz"
 
+
+# Day 22
+
+function parse_decks(file)
+  map(split(read(file, String), "\n\n")) do p
+    parse.(Int, split(p, "\n", keepempty = false)[2:end])
+  end
+end
+
+function play_combat_round!(deck1, deck2)
+  c1, c2 = popfirst!(deck1), popfirst!(deck2)
+  c1 > c2 ? push!(deck1, c1, c2) : push!(deck2, c2, c1)
+end
+
+function play_combat(deck1, deck2)
+  while true
+    play_combat_round!(deck1, deck2)
+    isempty(deck1) && (return deck2)
+    isempty(deck2) && (return deck1)
+  end
+end
+
+function solve43(file)
+  deck1, deck2 = parse_decks(file)
+  deck = play_combat(deck1, deck2)
+  sum(deck .* (length(deck):-1:1))
+end
+
+take_snapshot(d1, d2) = hash((d1, d2))
+
+function play_recursive_combat(deck1, deck2)
+  d = (d1, d2) = copy(deck1), copy(deck2)
+  snapshots = Set{UInt64}()
+  n = 0
+  while true
+    # declare player 1 as winner if constellation is known
+    n += 1
+    s = take_snapshot(d1, d2) 
+    s in snapshots && (return (1, (deck1, deck2)))
+    # save snapshot of current constellation
+    push!(snapshots, s)
+    # draw cards
+    c1, c2 = popfirst!(d1), popfirst!(d2)
+    # if both players have enough cards, a new round is played
+    if c1 <= length(d1) && c2 <= length(d2)
+      winner = play_recursive_combat(d1[1:c1], d2[1:c2])[1]
+    # else the player with higher number wins
+    else
+      winner = c1 > c2 ? 1 : 2
+    end
+    winner == 1 ? push!(d1, c1, c2) : push!(d2, c2, c1)
+
+    isempty(d1) && (return (2, (d1, d2)))
+    isempty(d2) && (return (1, (d1, d2)))
+  end
+end
+
+function solve44(file)
+  deck1, deck2 = parse_decks(file)
+  winner, decks = play_recursive_combat(deck1, deck2)
+  sum(decks[winner] .* (length(decks[winner]):-1:1))
+end
+
+@assert solve44("data/day22-test.txt") == 291
+@assert solve44("data/day22.txt") == 32054
+
 # Benchmark
 
 using Printf
