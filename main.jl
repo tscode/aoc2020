@@ -1251,6 +1251,72 @@ end
 @assert solve44("data/day22-test.txt") == 291
 @assert solve44("data/day22.txt") == 32054
 
+
+# Day 23
+
+cindex(i, n) = ((i-1) % n) + 1
+
+function crab_move!(cups, current)
+  n = length(cups)
+  take1 = cups[current]
+  take2 = cups[take1]
+  take3 = cups[take2]
+  curr = cups[take3]
+  dest = cindex(current - 1 + n, n)
+  while dest == take1 || dest == take2 || dest == take3
+    dest = cindex(dest - 1 + n, n)
+  end
+  cups[current] = curr
+  cups[take3] = cups[dest]
+  cups[dest] = take1
+  curr
+end
+
+function linear_to_labels(input)
+  n = length(input)
+  cups = zeros(Int, n)
+  for i in 1:n cups[input[i]] = input[cindex(i+1, n)] end
+  cups
+end
+
+function labels_to_linear(cups)
+  c, n = 1, length(cups)
+  input = zeros(Int, n)
+  for i in 1:n
+    input[i] = c
+    c = cups[c]
+  end
+  input
+end
+
+function solve45(input, steps = 100)
+  input = parse.(Int, collect(input))
+  cups = linear_to_labels(input)
+  current = input[1]
+  for _ in 1:steps
+    current = crab_move!(cups, current)
+  end
+  labels_to_linear(cups)[2:end] |> join
+end
+
+@assert solve45("389125467") == "67384529"
+@assert solve45("784235916") == "53248976"
+
+function solve46(input, steps = 10000000)
+  input = [parse.(Int, collect(input)); length(input)+1:1000000]
+  current = input[1]
+  cups = linear_to_labels(input)
+  for _ in 1:steps
+    current = crab_move!(cups, current)
+  end
+  a = cups[1]
+  b = cups[a]
+  a * b
+end
+
+@assert solve46("389125467") == 149245887792
+@assert solve46("784235916") == 418819514477
+
 # Benchmark
 
 using Printf
